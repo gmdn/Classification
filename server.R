@@ -146,8 +146,8 @@ shinyServer(function(input, output, session) {
       ## save data
       save(actionsSaved, file = fileName)
       
-      ## upload to FTP
-      ftpUpload(fileName, paste("ftp://gmdn:gamifir@gmdn.altervista.org/", fileName, sep = ""))
+      ## upload to FTP (only local)
+      #ftpUpload(fileName, paste("ftp://gmdn2:gamifir@gmdn.altervista.org/", fileName, sep = ""))
       
     }
     
