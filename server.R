@@ -9,11 +9,13 @@ library(shiny)
 library(ggplot2)
 library(grid)
 library(rlist)
+library(RCurl)
+#library(reshape2)
 source("nbEstimate.R")
 source("nbClassify.R")
 source("loadData.R")
 source("helpers.R")
-require("reshape2")
+
 
 shinyServer(function(input, output, session) {
   
@@ -143,6 +145,9 @@ shinyServer(function(input, output, session) {
       
       ## save data
       save(actionsSaved, file = fileName)
+      
+      ## upload to FTP
+      ftpUpload(fileName, paste("ftp://gmdn:gamifir@gmdn.altervista.org/", fileName, sep = ""))
       
     }
     
