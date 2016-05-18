@@ -478,6 +478,8 @@ shinyServer(function(input, output, session) {
       metricsTest$f1[indexCurrentClass] <- metrics$f1
       
       actionsSaved <<- list.append(actionsSaved,
+                                   slope = input$slope,
+                                   intercept = input$intercept,
                                    recall = metrics$recall,
                                    precision = metrics$precision,
                                    f1 = metrics$f1,
