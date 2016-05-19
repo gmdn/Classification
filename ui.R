@@ -28,10 +28,11 @@ shinyUI(fluidPage(
       
       fluidRow(
         column(6, uiOutput(outputId = "startGame")),    
-        column(6, actionButton(inputId = "nextCategory",
-                               label   = "Next Category",
-                               class = "btn-info",
-                               width = "100%"))
+        column(6, uiOutput(outputId = "nextCategory"))
+        #column(6, actionButton(inputId = "nextCategory",
+                               #label   = "Next Category",
+                               #class = "btn-info",
+                               #width = "100%"))
       ),
       
       br(),
@@ -71,7 +72,7 @@ shinyUI(fluidPage(
         column(2, actionButton(inputId = "decreaseA",
                                label   ="-")),
         column(8, sliderInput(inputId = "intercept",
-                              label   = "Parameter A",
+                              label   = "Shift",
                               min     = -50,
                               max     = 50,
                               value   = 0,
@@ -84,7 +85,7 @@ shinyUI(fluidPage(
         column(2, actionButton(inputId = "decreaseB",
                                label   ="-")),
         column(8, sliderInput(inputId = "slope",
-                              label   = "Parameter B",
+                              label   = "Rotate",
                               min     = 0.7,
                               max     = 2.2,
                               value   = 1.5,

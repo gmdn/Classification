@@ -125,70 +125,73 @@ shinyServer(function(input, output, session) {
   ## Change category (reset)
   observeEvent(input$nextCategory, {
     
-    indexCurrentClass <<- indexCurrentClass + 1
-
-    ## IF game has ended
-    if(indexCurrentClass == 11) {
+    if(game$tested) {
       
-      ## Save average f1 (just to double check results)
-      actionsSaved <<- list.append(actionsSaved,
-                                   averageF1 = mean(metricsTest$f1),
-                                   ts = Sys.time())
+      indexCurrentClass <<- indexCurrentClass + 1
       
-      ## build filename.
-      fileName <- paste("./",
-                        paste(input$username,
-                              setSeed,
-                              sep = "_"),
-                        ".RData",
-                        sep = "")
+      ## IF game has ended
+      if(indexCurrentClass == 11) {
+        
+        ## Save average f1 (just to double check results)
+        actionsSaved <<- list.append(actionsSaved,
+                                     averageF1 = mean(metricsTest$f1),
+                                     ts = Sys.time())
+        
+        ## build filename.
+        fileName <- paste("./",
+                          paste(input$username,
+                                setSeed,
+                                sep = "_"),
+                          ".RData",
+                          sep = "")
+        
+        ## save data
+        save(actionsSaved, file = fileName)
+        
+        ## upload to FTP (only local)
+        #ftpUpload(fileName, paste("ftp://gmdn2:gamifir@gmdn.altervista.org/", fileName, sep = ""))
+        
+      }
       
-      ## save data
-      save(actionsSaved, file = fileName)
+      ## update game status
+      game$started <- FALSE
+      game$tested <- FALSE
       
-      ## upload to FTP (only local)
-      #ftpUpload(fileName, paste("ftp://gmdn2:gamifir@gmdn.altervista.org/", fileName, sep = ""))
+      clicks$available <- 18
       
+      currentClass <<- classes[indexCurrentClass]
+      
+      objects$sampled <- rep(1, numberOfObjects)
+      
+      activeFeatures <<- rep(0, numberOfFeatures)
+      
+      activeObjects <<- rep(0, numberOfObjects)
+      
+      activeLabels <<- rep(0, numberOfObjects)
+      
+      metricsTest$recall <<- NULL
+      
+      training <<- NULL
+      validation <<- NULL
+      test <<- NULL
+      
+      maxF1 <<- 0
+      
+      intercept <<- 0
+      slope <<- 1
+      
+      updateSliderInput(session,
+                        inputId = "intercept",
+                        value = 0,
+                        min = -50,
+                        max = 50)
+      
+      updateSliderInput(session,
+                        inputId = "slope",
+                        value = 1.5,
+                        min = 0.7,
+                        max = 2.2)
     }
-    
-    ## update game status
-    game$started <- FALSE
-    game$tested <- FALSE
-    
-    clicks$available <- 18
-    
-    currentClass <<- classes[indexCurrentClass]
-    
-    objects$sampled <- rep(1, numberOfObjects)
-    
-    activeFeatures <<- rep(0, numberOfFeatures)
-    
-    activeObjects <<- rep(0, numberOfObjects)
-    
-    activeLabels <<- rep(0, numberOfObjects)
-    
-    metricsTest$recall <<- NULL
-    
-    training <<- NULL
-    validation <<- NULL
-    test <<- NULL
-    
-    maxF1 <<- 0
-    
-    intercept <<- 0
-    slope <<- 1
-    
-    updateSliderInput(session,
-                      inputId = "intercept",
-                      value = 0,
-                      min = -50,
-                      max = 50)
-    
-    updateSliderInput(session,
-                      inputId = "slope",
-                      value = 1.5,
-                      min = 0.7,
-                      max = 2.2)
     
   })
   
@@ -838,7 +841,22 @@ shinyServer(function(input, output, session) {
                      width = "100%")
       })
       
+      output$nextCategory <- renderUI({
+        actionButton(inputId = "nextCategory",
+                     label   = "Next Category", 
+                     class = "btn-danger",
+                     width = "100%")
+      })
+      
+      
       if(game$tested) {
+        
+        output$nextCategory <- renderUI({
+          actionButton(inputId = "nextCategory",
+                       label   = "Next Category", 
+                       class = "btn-info",
+                       width = "100%")
+        })
         
         output$addTraining <- renderUI({
           actionButton(inputId = "addTraining",
@@ -861,7 +879,8 @@ shinyServer(function(input, output, session) {
                        width = "100%")
         })
         
-      } else {
+      } #end if game tested
+      else {
         
         if(clicks$available > 0) {
           
@@ -907,13 +926,20 @@ shinyServer(function(input, output, session) {
       }
       
     }
-    else {
+    else { #end if game started
       
       if(indexCurrentClass == 0 | indexCurrentClass > 10) {
         
         output$startGame <- renderUI({
           actionButton(inputId = "startGame",
                        label   = "Start Game", 
+                       class = "btn-danger",
+                       width = "100%")
+        })
+        
+        output$nextCategory <- renderUI({
+          actionButton(inputId = "nextCategory",
+                       label   = "Next Category", 
                        class = "btn-danger",
                        width = "100%")
         })
@@ -927,6 +953,13 @@ shinyServer(function(input, output, session) {
                        width = "100%")
         })
       }
+      
+      output$nextCategory <- renderUI({
+        actionButton(inputId = "nextCategory",
+                     label   = "Next Category", 
+                     class = "btn-danger",
+                     width = "100%")
+      })
       
       output$addTraining <- renderUI({
         actionButton(inputId = "addTraining",
