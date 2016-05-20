@@ -439,10 +439,6 @@ shinyServer(function(input, output, session) {
     ## Check game status.
     if(!game$tested & game$started) {
       
-      actionsSaved <<- list.append(actionsSaved,
-                                   testClass = indexCurrentClass,
-                                   ts = Sys.time())
-      
       ## Update game status.
       game$tested <- TRUE
       
@@ -482,12 +478,17 @@ shinyServer(function(input, output, session) {
       metricsTest$f1[indexCurrentClass] <- metrics$f1
       
       actionsSaved <<- list.append(actionsSaved,
+                                   testClass = indexCurrentClass,
                                    slope = input$slope,
                                    intercept = input$intercept,
                                    recall = metrics$recall,
                                    precision = metrics$precision,
                                    f1 = metrics$f1,
-                                   ts = Sys.time())
+                                   resourcesLeft = resources$credits,
+                                   ts = Sys.time()
+                                   )
+      
+      print(actionSaved)
       
     }
     
