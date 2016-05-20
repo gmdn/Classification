@@ -134,6 +134,7 @@ shinyServer(function(input, output, session) {
         
         ## Save average f1 (just to double check results)
         actionsSaved <<- list.append(actionsSaved,
+                                     username = input$username,
                                      averageF1 = mean(metricsTest$f1),
                                      ts = Sys.time())
         
