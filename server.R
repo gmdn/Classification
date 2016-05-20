@@ -488,8 +488,6 @@ shinyServer(function(input, output, session) {
                                    ts = Sys.time()
                                    )
       
-      print(actionSaved)
-      
     }
     
   })
