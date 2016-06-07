@@ -9,7 +9,7 @@ library(shiny)
 library(ggplot2)
 library(grid)
 library(rlist)
-library(RCurl)
+#library(RCurl)
 library(reshape2)
 source("nbEstimate.R")
 source("nbClassify.R")
@@ -20,10 +20,13 @@ source("helpers.R")
 shinyServer(function(input, output, session) {
   
   ## Generate seed.
-  setSeed <- runif(n = 1, min = 0, max = .Machine$integer.max)
+  #setSeed <- runif(n = 1, min = 0, max = .Machine$integer.max)
+  seed <- floor(runif(n = 1, min = 0, 10000000))
+  set.seed(seed)
+  #print(seed)
   
   ## List of actions to be saved for analysis.
-  actionsSaved <- list(initSeed = setSeed, ts = Sys.time())
+  actionsSaved <- list(initSeed = seed, ts = Sys.time())
   
   ## vector of class names
   classNames <- c("acq", "corn", "crude", "earn", "grain",
@@ -43,13 +46,13 @@ shinyServer(function(input, output, session) {
   currentClass <- classes[indexCurrentClass]
   
   ## Cost for training.
-  trainingCost <- 10 #as.numeric(input$costTraining)
+  trainingCost <- 10
   
   ## Cost for validation.
-  validationCost <- 10 #as.numeric(input$costValidation)
+  validationCost <- 10
   
   ## Cost for test.
-  testCost <- 0 #as.numeric(input$costTest)
+  testCost <- 0
   
   ## Number of clicks (training/validation) available.
   clicks <- reactiveValues(available = 18)
@@ -80,6 +83,10 @@ shinyServer(function(input, output, session) {
   
   ## Set maximum validation F1.
   maxF1 <- 0
+  
+  ## Set point for max F1
+  bestX <- 0
+  bestY <- 0
   
   ## Set parameters for max F1
   intercept <- 0
@@ -120,6 +127,14 @@ shinyServer(function(input, output, session) {
   validation <- NULL
   test <- NULL
   
+  ## Get clicks on plot.
+  click <- reactiveValues(x = 0, y = 0)
+
+  ## ***************************************
+  ## ADD THIS LINE TO SYNCHRONIZE SAMPLING!
+  sample(1:10, 5)
+  ## ***************************************
+  
   ############ REACTIVE CODE HERE #############
   
   ## Change category (reset)
@@ -141,7 +156,7 @@ shinyServer(function(input, output, session) {
         ## build filename.
         fileName <- paste("./",
                           paste(input$username,
-                                setSeed,
+                                seed,
                                 sep = "_"),
                           ".RData",
                           sep = "")
@@ -170,7 +185,7 @@ shinyServer(function(input, output, session) {
       
       activeLabels <<- rep(0, numberOfObjects)
       
-      metricsTest$recall <<- NULL
+      metricsTest$recall <- NULL
       
       training <<- NULL
       validation <<- NULL
@@ -180,6 +195,12 @@ shinyServer(function(input, output, session) {
       
       intercept <<- 0
       slope <<- 1
+      
+      bestX <<- 0
+      bestY <<- 0
+      click$x <- 0
+      click$y <- 0
+      
       
       updateSliderInput(session,
                         inputId = "intercept",
@@ -210,10 +231,14 @@ shinyServer(function(input, output, session) {
       ## update status of the game.
       game$started <- TRUE
       
+      #print(sample(1:10, 5))
+      
       ## Sample from available objects.
       newSample <- sample(x = which(objects$sampled == 1),
                           size = numSamples * 2,
                           replace = FALSE)
+      
+      #print(head(newSample))
       
       ## Set this sample of objects as active.
       activeObjects[newSample] <<- 1
@@ -225,7 +250,7 @@ shinyServer(function(input, output, session) {
       activeLabels[newSample[(numSamples + 1):(numSamples * 2)]] <<- 2
       
       ## This sample will not be available next time.
-      objects$sampled[newSample] <<- 0
+      objects$sampled[newSample] <- 0
       
     }
     
@@ -263,6 +288,9 @@ shinyServer(function(input, output, session) {
                             size = numSamples,
                             replace = FALSE)
         
+        
+        #print(head(newSample))
+        
         ## Set this sample of objects as active.
         activeObjects[newSample] <<- 1
         
@@ -270,7 +298,7 @@ shinyServer(function(input, output, session) {
         activeLabels[newSample] <<- 1
         
         ## This sample will not be available next time.
-        objects$sampled[newSample] <<- 0
+        objects$sampled[newSample] <- 0
         
       } #if(sum(objectsNotSampled) > numSamples)
       
@@ -287,7 +315,7 @@ shinyServer(function(input, output, session) {
         activeLabels[lastSample] <<- 1
         
         ## This sample will not be available next time.
-        objects$sampled[lastSample] <<- 0
+        objects$sampled[lastSample] <- 0
         
       } #else
       
@@ -327,6 +355,8 @@ shinyServer(function(input, output, session) {
                             size = numSamples,
                             replace = FALSE)
         
+        #print(head(newSample))
+        
         ## Set this sample of objects as active.
         activeObjects[newSample] <<- 1
         
@@ -334,7 +364,7 @@ shinyServer(function(input, output, session) {
         activeLabels[newSample] <<- 2
         
         ## This sample will not be available next time.
-        objects$sampled[newSample] <<- 0
+        objects$sampled[newSample] <- 0
         
       } #if(input$addValidation > 0)
       
@@ -351,7 +381,7 @@ shinyServer(function(input, output, session) {
         activeLabels[lastSample] <<- 2
         
         ## This sample will not be available next time.
-        objects$sampled[lastSample] <<- 0
+        objects$sampled[lastSample] <- 0
         
       } #else
       
@@ -468,7 +498,8 @@ shinyServer(function(input, output, session) {
       coordinates <- list(x = coordinateX, y = coordinateY)
       
       ## Use line parameters (intercept, slope).
-      line <- list(q = input$intercept, m = input$slope)
+      line <- list(q = (click$y + input$intercept) - input$slope * click$x,
+                   m = input$slope)
       
       ## Compute classification performance.
       metrics <- nbClassify(coordinates, classLabels, line)
@@ -532,7 +563,8 @@ shinyServer(function(input, output, session) {
     classLabels <- labelsTraining[activeLabels == 2, currentClass]
     
     ## Use line parameters (intercept, slope).
-    line <- list(q = input$intercept, m = input$slope)
+    line <- list(q = (click$y + input$intercept) - input$slope * click$x,
+                 m = input$slope)
     
     ## Compute classification performance.
     performance <- nbClassify(coordinates,
@@ -546,8 +578,10 @@ shinyServer(function(input, output, session) {
     ## Update best parameters if necessary
     if(performance$f1 > maxF1) {
       maxF1 <<- performance$f1
-      intercept <<- input$intercept
+      intercept <<- (click$y + input$intercept) - input$slope * click$x
       slope <<- input$slope
+      bestX <<- click$x
+      bestY <<- click$y + input$intercept
     }
     
   })
@@ -560,8 +594,7 @@ shinyServer(function(input, output, session) {
   ## sample is available.
   output$coordinatesValidation <- renderPlot({
     
-    ## Activate when
-    input$clear
+    ## Activate also when
     input$nextCategory
     
     ## Check whether new samples are available
@@ -657,16 +690,20 @@ shinyServer(function(input, output, session) {
                            y = as.vector(coordinates$y),
                            classes = as.factor(labelsTraining[activeLabels == 2, currentClass]))
       
+      ## generate main plot
+      ggp <- ggplot(coords, aes(x = x,
+                                y = y,
+                                colour = classes))
+      
       ## Create plot with corresponding colors.
       if(input$showPositive & input$showNegative) {
         
-        ggplot(coords, aes(x = x, y = y, colour = classes)) +
-          ggtitle(paste("Current class :",
-                        classNames[classes[indexCurrentClass]])) +
+        ggp <- ggp + ggtitle(paste("Current class :",
+                                   classNames[classes[indexCurrentClass]])) +
           scale_color_manual(values = cbPalette[c(7, 3)]) +
           geom_point(alpha = 0.4) +
           geom_abline(slope = input$slope,
-                      intercept = input$intercept,
+                      intercept = (click$y + input$intercept) - input$slope * click$x,
                       colour = "blue") +
           annotation_custom(grob = cF1) + 
           annotation_custom(grob = bF1) +
@@ -677,15 +714,14 @@ shinyServer(function(input, output, session) {
         
         classLabels <- labelsTraining[activeLabels == 2, currentClass]
         
-        ggplot(coords[classLabels == 1, ],
-               aes(x = x, y = y, colour = classes)) +
+        ggp <- ggplot(coords[classLabels == 1, ],
+                      aes(x = x, y = y, colour = classes)) +
           ggtitle(paste("Current class :",
                         classNames[classes[indexCurrentClass]])) +
           scale_color_manual(values = cbPalette[c(3)]) +
           geom_point(alpha = 0.3) + 
-          #geom_abline(slope = 1, intercept = 0, colour = "green") +
           geom_abline(slope = input$slope,
-                      intercept = input$intercept,
+                      intercept = (click$y + input$intercept) - input$slope * click$x,
                       colour = "blue") +
           annotation_custom(grob = cF1) + 
           annotation_custom(grob = bF1) +
@@ -696,20 +732,45 @@ shinyServer(function(input, output, session) {
         
         classLabels <- labelsTraining[activeLabels == 2, currentClass]
         
-        ggplot(coords[classLabels == 0, ],
-               aes(x = x, y = y, colour = classes)) +
+        ggp <- ggplot(coords[classLabels == 0, ],
+                      aes(x = x, y = y, colour = classes)) +
           ggtitle(paste("Current class :",
                         classNames[classes[indexCurrentClass]])) +
           scale_color_manual(values = cbPalette[c(7)]) +
           geom_point(alpha = 0.3) + 
           geom_abline(slope = input$slope,
-                      intercept = input$intercept,
+                      intercept = (click$y + input$intercept) - input$slope * click$x,
                       colour = "blue") +
           annotation_custom(grob = cF1) + 
           annotation_custom(grob = bF1) +
           annotation_custom(grob = gF1) 
         
       }
+      
+      ## position line after click
+      if(click$x != 0 & click$y != 0) {
+        
+        ## build point
+        point <- data.frame(x = click$x,
+                            y = click$y + input$intercept,
+                            classes = 1)
+        
+        ggp <- ggp + geom_point(data = point,
+                                aes(x = x, y = y),
+                                colour = "#111111",
+                                size = 1,
+                                shape = 16)
+        
+        ggp <- ggp + geom_point(data = point,
+                                aes(x = x, y = y),
+                                colour = "#333333",
+                                size = 5,
+                                shape = 1)
+      }
+      
+      ## return plot
+      ggp
+      
       
     }
     
@@ -751,22 +812,13 @@ shinyServer(function(input, output, session) {
     if(!is.null(input$plot_click)) {
       
       ## Get coordinates of the point.
-      clickY <- input$plot_click$y
-      clickX <- input$plot_click$x
+      click$y <- input$plot_click$y
+      click$x <- input$plot_click$x
       
-      ## Compute the new intercept (q = y - mx).
-      newIntercept <- clickY - clickX * input$slope
-      
-      ## Set the new limits of the slider.
-      sliderMin <- round(newIntercept) - 50
-      sliderMax <- round(newIntercept) + 50
-      
-      ## Update the slider of the intercept.
+      ## Reset the slider of the intercept.
       updateSliderInput(session,
                         inputId = "intercept",
-                        value = newIntercept,
-                        min = sliderMin,
-                        max = sliderMax)
+                        value = 0)
       
     }
     
@@ -820,9 +872,14 @@ shinyServer(function(input, output, session) {
   ## Observe clicks on set the best parameters
   observeEvent(input$best, {
     
+    ## reset click
+    click$x <- bestX
+    click$y <- bestY
+    
+    
     updateSliderInput(session,
                       inputId = "intercept",
-                      value = intercept)
+                      value = 0)
     
     updateSliderInput(session,
                       inputId = "slope",
